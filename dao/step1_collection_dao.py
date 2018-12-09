@@ -52,17 +52,20 @@ class collection_dao:
 
         createRecords = '''
             create table records (
+              record_index varchar(64),
               content text,
               rule    text,
               maxvalue    text,
               ruletype  text,
               pfCategory text,
-              tableName text
+              tableName text,
+              unique (record_index)
             );
         '''
 
         createRawResults = '''
             create table rawrecords (
+                  record_index varchar(64),
               name text,
               pfname text,
               content text,
@@ -70,7 +73,8 @@ class collection_dao:
               maxvalue    text,
               ruletype  text,
               pfCategory text,
-              relval     text
+              relval     text,
+              unique (record_index,name,pfname)
             );
         '''
 
@@ -119,8 +123,11 @@ class collection_dao:
 
     def add_ruleinfo(self, record_po):
         self.initConn()
-        sql = "insert into records(content,rule,maxvalue,ruletype,pfCategory,tableName) VALUES (:content,:rule,:maxvalue,:ruletype,:pfc,:tablename)"
+        sql = "insert into records" \
+              "(record_index,content,rule,maxvalue,ruletype,pfCategory,tableName) " \
+              "VALUES (:recordindex,:content,:rule,:maxvalue,:ruletype,:pfc,:tablename)"
         collection_dao.conn.execute(sql, {
+            "recordindex": record_po.record_index,
             "content": (record_po.content),
             "rule": (record_po.rule),
             "maxvalue": (record_po.maxvalue),
@@ -137,29 +144,25 @@ class collection_dao:
         exits = collection_dao.conn.execute("SELECT * FROM rawrecords WHERE "
                                             "name=:name AND "
                                             "pfname=:pfname AND "
-                                            "content=:content AND "
-                                            "rule=:rule AND "
-                                            "maxvalue=:maxvalue AND "
-                                            "ruletype=:ruletype AND "
-                                            "pfCategory= :pfc",
+                                            "record_index=:index ",
                                             {
                                                 'name': scroee,
                                                 'pfname': scroer,
-                                                'content': (record_po.content),
-                                                'rule': (record_po.rule),
-                                                'maxvalue': (record_po.maxvalue),
-                                                'ruletype': (record_po.ruletype),
-                                                'pfc': (record_po.pfCategory)
+                                                'index': record_po.record_index
                                             })
 
         rowcount = len(exits.fetchall())
         if rowcount > 0:
-            # print("name->" + scroee + ";pfname->" + scroer + ";c-> " + (record_po.pfCategory) + " 重复，被跳过,找到行数： ", rowcount)
+            print("name->" + scroee + ";pfname->" + scroer + ";c-> " + (record_po.pfCategory) + " 重复，被跳过,找到行数： ",
+                  rowcount)
             return
 
-        insetStr = "insert into rawrecords (name,pfname,content,rule,maxvalue,ruletype,pfCategory) \
-                    values (:name,:pfname,:content,:rule,:maxvalue,:ruletype,:pfc)"
+        insetStr = "insert into rawrecords " \
+                   "(record_index, name,pfname,content,rule,maxvalue,ruletype,pfCategory) " \
+                   "values (:recordindex,:name,:pfname,:content,:rule,:maxvalue,:ruletype,:pfc)"
+
         collection_dao.conn.execute(insetStr, {
+            "recordindex": record_po.record_index,
             'name': scroee,
             'content': (record_po.content),
             'rule': (record_po.rule),
@@ -174,7 +177,7 @@ class collection_dao:
         rows = collection_dao.conn.execute("SELECT name,jxtype,unit FROM user;")
         for row in rows:
             user = UserInfoPo(
-                0, row[0], row[2], row[1],''
+                0, row[0], row[2], row[1], ''
             )
             users.append(user)
         return users
@@ -183,12 +186,14 @@ class collection_dao:
         self.initConn()
         rules = []
         rows = collection_dao.conn.execute(
-            "SELECT content,rule,maxvalue,ruletype,pfCategory FROM records WHERE tableName=:tablename", {
+            "SELECT record_index,content,rule,maxvalue,ruletype,pfCategory "
+            "FROM records "
+            "WHERE tableName=:tablename", {
                 "tablename": jxtype
             })
         for row in rows:
             rule = RecordItemPo(
-                row[0], row[1], row[2], row[3], row[4], ''
+                row[0], row[1], row[2], row[3], row[4], row[5], ''
             )
             rules.append(rule)
         return rules

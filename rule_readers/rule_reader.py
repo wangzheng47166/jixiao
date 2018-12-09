@@ -25,8 +25,10 @@ class RulesReader:
             for j in range(rowcount):
                 # 跳过三行表头
                 if j > 2:
+                    rindex = '%s_%s' % (tableName, int(sheet.row_values(j)[0]))
                     # content, rule, maxvalue, ruletype, pfCategory, tableName
                     po = RecordItemPo(
+                        rindex,
                         (sheet.row_values(j)[1]),
                         (sheet.row_values(j)[2]),
                         (sheet.row_values(j)[3]),
