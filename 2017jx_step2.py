@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
+import xlrd
+import xlwt
 import os
 import shutil
 import sqlite3
-
-import xlrd
-import xlwt
 
 from common import define
 
@@ -17,33 +16,26 @@ conn = sqlite3.connect(db2)
 
 createRawResults = '''
     create table rawrecords (
-        record_index varchar(64),
-        name text,
-        pfname text,
-        tableName text,
-        maxvalue    text,
-        ruletype  text,
-        pfCategory text,
-        relval     int default 0,
-        unique (record_index,name,pfname)
+      name text,
+      pfname text,
+      pfType text,
+      pfCategory text,
+      relval     int DEFAULT 0
     );
 '''
 
 createRecords = '''
     create table records (
-        record_index varchar(64),
-        content text,
-        rule    text,
-         maxvalue    text,
-              ruletype  text,
-              pfCategory text,
-              tableName text,
-              unique (record_index)
+      content text,
+      rule    text,
+      maxvalue    text,
+      ruletype  text,
+      pfCategory text,
+      tableName text
     );
 '''
 
-createUsers = '''
-create table user (
+createUsers = '''create table user (
   id INT ,
   name text,
   unit text,
@@ -73,21 +65,6 @@ def readConfigExcel():
         sqlInsert = "insert into user (id,name,unit,jxtype,mail) VALUES (:id,:name,:unit,:jxtype,:mail);"
         sqlresut = conn.execute(sqlInsert, {'id': id, 'name': name, 'unit': unit, 'jxtype': jxtype, 'mail': mail})
 
-    def add_ruleinfo(self, record_po):
-        self.initConn()
-        sql = "insert into records" \
-              "(record_index,content,rule,maxvalue,ruletype,pfCategory,tableName) " \
-              "VALUES (:recordindex,:content,:rule,:maxvalue,:ruletype,:pfc,:tablename)"
-        collection_dao.conn.execute(sql, {
-            "recordindex": record_po.record_index,
-            "content": (record_po.content),
-            "rule": (record_po.rule),
-            "maxvalue": (record_po.maxvalue),
-            "ruletype": (record_po.ruletype),
-            "pfc": (record_po.pfCategory),
-            "tablename": (record_po.tableName)
-        })
-
 
 def readRecordRunExcel():
     filepath = define.rule_config_filename
@@ -99,25 +76,15 @@ def readRecordRunExcel():
         rowcount = sheet.nrows
         for j in range(rowcount):
             if j > 2:
-                rindex = '%s_%s' % (tableName, int(sheet.row_values(j)[0]))
                 content = sheet.row_values(j)[1]
                 rule = sheet.row_values(j)[2]
                 maxvalue = sheet.row_values(j)[3]
                 ruletype = sheet.row_values(j)[4]
                 pfCategory = sheet.row_values(j)[6]
-                insertSql = "insert into records" \
-                            "(record_index,content,rule,maxvalue,ruletype,pfCategory,tableName) " \
-                            "VALUES (:recordindex,:content,:rule,:maxvalue,:ruletype,:pfc,:tablename)"
+                insertSql = "insert into records(content,rule,maxvalue,ruletype,pfCategory,tableName) VALUES (:content,:rule,:maxvale,:ruletype,:pfc,:tablename)"
                 conn.execute(insertSql,
-                             {
-                                 "recordindex": rindex,
-                                 "content": content,
-                                 "rule": rule,
-                                 "maxvalue": maxvalue,
-                                 "ruletype": ruletype,
-                                 "pfc": pfCategory,
-                                 "tablename": tableName
-                             })
+                             {'content': content, 'rule': rule, 'maxvale': maxvalue, 'ruletype': ruletype,
+                              'pfc': pfCategory, 'tablename': tableName})
 
 
 def initDatabase():
@@ -134,30 +101,20 @@ def readRawData():
             print("录入结果： %s", dataPath)
             rowscont = sheet1.nrows
             for i in range(rowscont):
-                recordindex = sheet1.row_values(i)[0]
                 name = sheet1.row_values(i)[0]
-                tableName = sheet1.row_values(i)[2]
+                pfType = sheet1.row_values(i)[2]
                 pfCategory = sheet1.row_values(i)[7]
                 pfName = sheet1.row_values(i)[8]
                 value = sheet1.row_values(i)[9]
                 if "得分" != value:
+                    insertSql = " insert into rawrecords(name,pfname,pfType,pfCategory,relval)" \
+                                " VALUES (:name,:pfname,:pfType,:pfCategory,:relval)"
                     intValue = 0
                     if '' != value:
                         intValue = int(value)
-                    insetStr = "insert into rawrecords " \
-                               "(record_index, name,pfname,tableName,maxvalue,ruletype,pfCategory,relval) " \
-                               "values (:recordindex,:name,:pfname,:tablename,:maxvalue,:ruletype,:pfc,:relval)"
-
-                    conn.conn.execute(insetStr, {
-                        "recordindex": recordindex,
-                        'name': name,
-                        'tablename': tableName,
-                        'maxvalue': '',
-                        'ruletype': '',
-                        'pfname': pfName,
-                        'pfc': pfCategory,
-                        'relval': intValue
-                    })
+                    sqlresut = conn.execute(insertSql,
+                                            {'name': name, 'pfname': pfName, 'pfType': pfType, 'pfCategory': pfCategory,
+                                             'relval': intValue})
 
 
 def finalBigReport():
@@ -196,7 +153,7 @@ def finalBigReport():
     sheet1.row(0).set_style(tall_style)
 
     pfRecords = conn.execute(
-        "SELECT name,pfname,pfType,pfCategory,relval FROM rawrecords ORDER BY name,record_index");
+        "SELECT name,pfname,pfType,pfCategory,relval FROM rawrecords ORDER BY name,pfType,pfCategory");
     for pfRecord in pfRecords:
         rowsCount = len(sheet1.rows) + 1
         if rowsCount < 10:
@@ -232,7 +189,7 @@ def finalPersonReport():
         pfType = user[1]
         unit = user[2]
         # 根据个人的评分类型，得到评分策略
-        items = conn.execute("SELECT record_index,maxvalue FROM records WHERE tableName=:tbname",
+        items = conn.execute("SELECT content,rule,maxvalue,ruletype,pfCategory FROM records WHERE tableName=:tbname",
                              {
                                  "tbname": pfType
                              })
@@ -250,55 +207,55 @@ def finalPersonReport():
         sheet1 = resultWorkBook.add_sheet('sheet1')
 
         # 首行
-        if True:
+        if True :
             style = xlwt.XFStyle()
             fnt = xlwt.Font()
             fnt.bold = True
-            fnt.name = u'宋体'
+            fnt.name =  u'宋体'
             # 10.5 * 20
             fnt.height = 210
 
             alignBase = xlwt.Alignment()
             alignBase.horz = xlwt.Alignment.HORZ_CENTER
             alignBase.vert = xlwt.Alignment.VERT_CENTER
-            style.alignment = alignBase
+            style.alignment =alignBase
             style.font = fnt
             style.borders = baseborder
-            sheet1.write_merge(0, 0, 0, 6, "合伙人综合管理考核评价表（" + pfType + "）", style)
+            sheet1.write_merge(0, 0, 0, 6, "合伙人综合管理考核评价表（"+ pfType +"）",style)
 
         # 次行
-        if True:
+        if True :
             style = xlwt.XFStyle()
             fnt = xlwt.Font()
             fnt.bold = True
-            fnt.name = u'宋体'
+            fnt.name =  u'宋体'
             # 10 * 20
             fnt.height = 200
 
             alignBase = xlwt.Alignment()
             alignBase.horz = xlwt.Alignment.HORZ_LEFT
             alignBase.vert = xlwt.Alignment.VERT_CENTER
-            style.alignment = alignBase
+            style.alignment =alignBase
             style.font = fnt
             style.borders = baseborder
-            sheet1.write_merge(1, 1, 0, 6, "姓名：" + name +
-                               "            单位：" + unit +
-                               "            职务：" + pfType +
-                               "            考核年度：2017 ", style)
+            sheet1.write_merge(1, 1, 0, 6, "姓名："+ name+
+                               "            单位："+ unit +
+                               "            职务："+ pfType +
+                               "            考核年度：2017 ",style)
 
         # 三行 title
-        if True:
+        if True :
             style = xlwt.XFStyle()
             fnt = xlwt.Font()
             fnt.bold = True
-            fnt.name = u'宋体'
+            fnt.name =  u'宋体'
             # 10 * 20
             fnt.height = 200
 
             alignBase = xlwt.Alignment()
             alignBase.horz = xlwt.Alignment.HORZ_CENTER
             alignBase.vert = xlwt.Alignment.VERT_CENTER
-            style.alignment = alignBase
+            style.alignment =alignBase
             style.font = fnt
             style.borders = baseborder
 
@@ -313,7 +270,7 @@ def finalPersonReport():
         baseline = 2
 
         fnt = xlwt.Font()
-        fnt.name = u'宋体'
+        fnt.name =  u'宋体'
         # 10 * 20
         fnt.height = 200
 
@@ -328,39 +285,40 @@ def finalPersonReport():
         alignLeft.wrap = True
 
         styleNumber = xlwt.XFStyle()
-        styleNumber.alignment = alignCenter
+        styleNumber.alignment =alignCenter
         styleNumber.font = fnt
         styleNumber.borders = baseborder
 
+
         styleText = xlwt.XFStyle()
-        styleText.alignment = alignLeft
+        styleText.alignment =alignLeft
         styleText.font = fnt
         styleText.borders = baseborder
 
         totleMax = 0
         totleAvg = 0
 
-        for item in items:
+        for item in items :
             baseline += 1
             avgValue = 0
-            record_index = item[0]
-            maxValue = item[1]
-            try:
+            pyCategory = item[4]
+            maxValue = item[2]
+            try :
                 totleMax += int(round(float(maxValue)))
-            except ValueError as e:
+            except ValueError as e :
                 print(maxValue)
 
-            valueRows = conn.execute(
-                "select avg(relval) as avgvalue from rawrecords where name = :name and record_index = :idx ",
-                {
-                    "name": name,
-                    "idx": record_index
-                })
+            valueRows = conn.execute("select avg(relval) as avgvalue from rawrecords where name = :name and  pfType = :pfType and pfCategory = :pfc;",
+            {
+                "name":name,
+                "pfType":pfType,
+                "pfc":pyCategory
+            })
             valueRows = valueRows.fetchall()
             rowcount = len(valueRows)
-            if rowcount > 0:
-                for valueRow in valueRows:
-                    if None != valueRow[0]:
+            if rowcount > 0 :
+                for valueRow in valueRows :
+                    if None != valueRow[0] :
                         avgValue = valueRow[0]
 
             totleAvg += avgValue
@@ -372,9 +330,9 @@ def finalPersonReport():
             sheet1.write(baseline, 5, avgValue, styleNumber)
             sheet1.write(baseline, 6, item[4], styleNumber)
 
-        if True:
-            baseline += 1
-            sheet1.write_merge(baseline, baseline, 0, 2, "合计", styleText)
+        if True :
+            baseline +=1
+            sheet1.write_merge(baseline, baseline, 0, 2, "合计",styleText)
             sheet1.write(baseline, 3, totleMax, styleNumber)
             sheet1.write(baseline, 4, "", styleNumber)
             sheet1.write(baseline, 5, totleAvg, styleNumber)
@@ -391,6 +349,7 @@ def finalPersonReport():
         resultWorkBook.save(filepath)
 
 
+
 def main():
     initDatabase()
     readRawData()
@@ -399,7 +358,6 @@ def main():
     finalBigReport()
     # 根据每个人出个人表格
     finalPersonReport()
-
 
 main()
 
