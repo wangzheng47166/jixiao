@@ -55,13 +55,13 @@ def readConfigExcel():
     # 第二个表
     sheet1 = dataWorkBook.sheet_by_index(1)
     rowscont = sheet1.nrows
-    print("编程对应的人员组别.xlsx 中用户表共用户数 %s", rowscont)
+    print(filepath + " 中用户表共用户数 %s", rowscont)
     for i in range(rowscont):
         id = sheet1.row_values(i)[0]
         name = sheet1.row_values(i)[1]
         unit = sheet1.row_values(i)[2]
         jxtype = sheet1.row_values(i)[3]
-        mail = sheet1.row_values(i)[4]
+        mail = ""
         sqlInsert = "insert into user (id,name,unit,jxtype,mail) VALUES (:id,:name,:unit,:jxtype,:mail);"
         sqlresut = conn.execute(sqlInsert, {'id': id, 'name': name, 'unit': unit, 'jxtype': jxtype, 'mail': mail})
 
@@ -109,12 +109,16 @@ def readRawData():
                 if "得分" != value:
                     insertSql = " insert into rawrecords(name,pfname,pfType,pfCategory,relval)" \
                                 " VALUES (:name,:pfname,:pfType,:pfCategory,:relval)"
-                    intValue = 0
+                    relValue = 0
                     if '' != value:
-                        intValue = int(value)
+                        try:
+                            relValue = float(value)
+                        except ValueError as e:
+                            print(i + " line " + e)
+
                     sqlresut = conn.execute(insertSql,
                                             {'name': name, 'pfname': pfName, 'pfType': pfType, 'pfCategory': pfCategory,
-                                             'relval': intValue})
+                                             'relval': relValue})
 
 
 def finalBigReport():
@@ -360,6 +364,7 @@ def main():
     finalPersonReport()
 
 main()
+
 
 conn.commit()
 conn.close()

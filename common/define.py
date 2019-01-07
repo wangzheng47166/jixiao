@@ -1,7 +1,7 @@
 from utils import DataTimeUtils
 
-prefix = "d:"
-# prefix = "C:/Date_D"
+#prefix = "d:"
+prefix = "C:/Date_D"
 
 def get_step1_db_name():
     return prefix + "/test/jixiao_step1_prepair_" + str(DataTimeUtils.get_current_year()) + ".db"
