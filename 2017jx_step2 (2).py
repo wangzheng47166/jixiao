@@ -6,13 +6,23 @@ import os
 import shutil
 import sqlite3
 
-from common import define
+#
+# for fpathe,dirs,fs in os.walk('result'):
+#     for f in fs:
+#         print(os.path.join(fpathe,f))
+#
+#
+# resultWorkBook = xlwt.Workbook();
+#
+# sheet1 = resultWorkBook.add_sheet('sheet1')
+# sheet1.write_merge(0, 0, 0, 1, 'Long Cell')
+# sheet1.write(1, 0, 1)
+# sheet1.write(1, 1, 2)
+# resultWorkBook.save("测试大表.xls");
 
-db2 = define.get_step2_db_name()
-
-if os.path.exists(db2):
-    os.remove(db2)
-conn = sqlite3.connect(db2)
+if os.path.exists('jx2017_step2.db'):
+    os.remove('jx2017_step2.db')
+conn = sqlite3.connect('jx2017_step2.db')
 
 createRawResults = '''
     create table rawrecords (
@@ -51,7 +61,7 @@ conn.execute(createRecords)
 
 
 def readConfigExcel():
-    filepath = define.input_user_map_filename
+    filepath = '编程对应的人员组别.xlsx'
     dataWorkBook = xlrd.open_workbook(filepath)
 
     # 第二个表
@@ -69,7 +79,7 @@ def readConfigExcel():
 
 
 def readRecordRunExcel():
-    filepath = define.rule_config_filename
+    filepath = '考核表汇总.xlsx'
     dataWorkBook = xlrd.open_workbook(filepath)
     pageCount = len(dataWorkBook.sheets())
     for i in range(pageCount):
@@ -95,7 +105,7 @@ def initDatabase():
 
 
 def readRawData():
-    for fpathe, dirs, fs in os.walk(define.dirPaht):
+    for fpathe, dirs, fs in os.walk('result'):
         for f in fs:
             dataPath = os.path.join(fpathe, f)
             dataWorkBook = xlrd.open_workbook(dataPath)
@@ -112,6 +122,7 @@ def readRawData():
                 value = sheet1.row_values(i)[9]
                 if "石晨起" == name:
                     print(rowscont)
+
                 if "得分" != value:
                     insertSql = " insert into rawrecords(name,pfname,pfType,pfContent,pfInfo,pfCategory,relval)" \
                                 " VALUES (:name,:pfname,:pfType,:pfContent,:pfInfo,:pfCategory,:relval)"
@@ -131,7 +142,7 @@ def readRawData():
 
 
 def finalBigReport():
-    dirPaht = define.finalPath
+    dirPaht = "final"
     if os.path.exists(dirPaht):
         shutil.rmtree(dirPaht)
 
@@ -188,7 +199,7 @@ def finalBigReport():
 
 
 def finalPersonReport():
-    dirPaht = define.resultPath
+    dirPaht = "final\\persons"
     os.makedirs(dirPaht)
 
     # 从用户表中查出所有的人，如果查不到该人的评分记录，需要报警一下
@@ -260,7 +271,7 @@ def finalPersonReport():
             sheet1.write_merge(1, 1, 0, 6, "姓名：" + name +
                                "            单位：" + unit +
                                "            职务：" + pfType +
-                               "            考核年度：2018 ", style)
+                               "            考核年度：2017 ", style)
 
         # 三行 title
         if True:
@@ -373,10 +384,9 @@ def finalPersonReport():
 
 
 def group_person_record():
-    dirPaht = define.finalPath
+    dirpath = "final"
     fileName = "汇总.xls"
-    filepath = os.path.join(dirPaht, fileName);
-
+    filepath = os.path.join(dirpath, fileName)
     resultWorkBook = xlwt.Workbook()
     sheet1 = resultWorkBook.add_sheet('sheet1')
 
@@ -416,9 +426,9 @@ def group_person_record():
 
 
 def finalCollectReprot():
-    dirPaht = define.finalPath
+    dirpath = "final"
     fileName = "考核汇总表.xls"
-    filepath = os.path.join(dirPaht, fileName)
+    filepath = os.path.join(dirpath, fileName)
     resultWorkBook = xlwt.Workbook()
 
     style = xlwt.XFStyle()
